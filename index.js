@@ -3,11 +3,43 @@ let foods = [];
 let gst = 0;
 let serviceCharge = 0;
 
-// Initialize Materialize modal
 document.addEventListener('DOMContentLoaded', function () {
   const modal = document.getElementById('confirmationModal');
   M.Modal.init(modal);
+
+  // Add event listeners for GST and Service Charge inputs
+  document.getElementById('gstInput').addEventListener('input', updateCharges);
+  document.getElementById('serviceChargeInput').addEventListener('input', updateCharges);
+
+  // Add event listener for charge type selection (Include/Exclude)
+  document.querySelectorAll('input[name="chargeType"]').forEach((radio) => {
+    radio.addEventListener('change', () => {
+      toggleChargeInputs(radio.value === "include");
+      calculateTotal(); // Ensure table updates instantly
+    });
+  });
 });
+
+function toggleChargeInputs(show) {
+  document.getElementById('gstInputContainer').style.display = show ? 'block' : 'none';
+  document.getElementById('serviceChargeInputContainer').style.display = show ? 'block' : 'none';
+
+  // Reset GST and Service Charge when switching to "Exclude"
+  if (!show) {
+    document.getElementById('gstInput').value = '';
+    document.getElementById('serviceChargeInput').value = '';
+    gst = 0;
+    serviceCharge = 0;
+  }
+
+  calculateTotal(); // Update table immediately
+}
+
+function updateCharges() {
+  gst = parseFloat(document.getElementById('gstInput').value) || 0;
+  serviceCharge = parseFloat(document.getElementById('serviceChargeInput').value) || 0;
+  calculateTotal();
+}
 
 function addName() {
   const nameInput = document.getElementById('nameInput');
@@ -88,21 +120,8 @@ function updatePayer(foodIndex, payerIndex) {
   calculateTotal();
 }
 
-function toggleChargeInputs(show) {
-  document.getElementById('gstInputContainer').style.display = show ? 'block' : 'none';
-  document.getElementById('serviceChargeInputContainer').style.display = show ? 'block' : 'none';
-  document.getElementById('gstInput').value = show ? gst : '';
-  document.getElementById('serviceChargeInput').value = show ? serviceCharge : '';
-
-  calculateTotal();
-}
 
 function calculateTotal() {
-  const gstInput = document.getElementById('gstInput');
-  const serviceChargeInput = document.getElementById('serviceChargeInput');
-  gst = parseFloat(gstInput.value) || 0;
-  serviceCharge = parseFloat(serviceChargeInput.value) || 0;
-
   const totals = new Array(names.length).fill(0);
 
   foods.forEach(food => {
@@ -169,6 +188,7 @@ function handleFoodKeyPress(event) {
     addFood();
   }
 }
+
 function saveBillData() {
   const chargeType = document.querySelector('input[name="chargeType"]:checked').value;
 
@@ -177,7 +197,7 @@ function saveBillData() {
     foods: foods,
     gst: gst,
     serviceCharge: serviceCharge,
-    chargeType: chargeType // Save selected option
+    chargeType: chargeType
   };
 
   localStorage.setItem('billData', JSON.stringify(billData));
@@ -192,16 +212,22 @@ function loadBillData() {
     gst = savedBillData.gst;
     serviceCharge = savedBillData.serviceCharge;
 
-    // Restore GST/Service Charge selection
+    // Restore Charge Type Selection
     if (savedBillData.chargeType) {
       document.querySelector(`input[name="chargeType"][value="${savedBillData.chargeType}"]`).checked = true;
       toggleChargeInputs(savedBillData.chargeType === "include");
+    }
 
+    // Restore GST and Service Charge values in input fields if "Include" is selected
+    if (savedBillData.chargeType === "include") {
+      document.getElementById('gstInput').value = gst;
+      document.getElementById('serviceChargeInput').value = serviceCharge;
     }
 
     updateTableHeader();
     updateTableBody();
-    calculateTotal();
+    calculateTotal(); // Ensure the total reflects loaded GST/Service Charge
+
     alert('Bill data loaded!');
   } else {
     alert('No saved bill data found.');
